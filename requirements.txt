@@ -1,0 +1,16 @@
+# backend API
+fastapi==0.115.12
+uvicorn==0.34.1
+
+# backend app
+langgraph==0.3.30
+langchain-core==0.3.52
+langchain-ollama==0.3.2
+
+# utils
+python-dotenv==1.1.0
+pytz==2025.2
+
+# speech cloud
+tornado
+PyEventEmitter
