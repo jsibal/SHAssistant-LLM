@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import traceback
 import asyncio
 
 from uuid import uuid4
@@ -83,24 +84,30 @@ class HDSDialog(Dialog):
                     logger.debug(f"user_words: {user_words}")
                     await self.handle_input(user_words)
 
-    async def handle_input(self,user_words):
-        await self.send_message({"type": "thinking", "data": "thinking"}) 
-        output = await self.chain.ainvoke(
-            input=ChainInput(
-                messages=[HumanMessage(content=user_words)]
-            ),
-            config={
-                "configurable": {
-                    "thread_id": self.thread_id
+    async def handle_input(self, user_words):
+        await self.send_message({"type": "thinking", "data": "thinking"})
+
+        try:
+            output = await self.chain.ainvoke(
+                input=ChainInput(
+                    messages=[HumanMessage(content=user_words)]
+                ),
+                config={
+                    "configurable": {
+                        "thread_id": self.thread_id
+                    }
                 }
-            }
-        )
-        response = output["messages"][-1].content
+            )
+            response = output["messages"][-1].content
+        except Exception:
+            logger.error(traceback.format_exc())
+            response = "Promiňte, nastala chyba v Matrixu. Prosím zkuste to za chvíli."
+
+        await self.send_message({"type": "chat-dm", "data": response})
         await self.send_message({"type": "state_update","data": ha_instance.get_all_entities()})
-        await self.send_message({"type": "chat-dm", "data": response}) 
         if self.ttsEnabled:
             await self.synthesize_and_wait(response)
-        
+
     def on_receive_message(self, data):
         logger.debug("Received message:\n%s", str(data))
 
@@ -144,5 +151,14 @@ class HDSDialog(Dialog):
 
 
 if __name__ == "__main__":
-    print("http://127.0.0.1:8888/static/index.html")
-    SpeechCloudWS.run(HDSDialog, address="0.0.0.0", port=8888, static_path="./static")
+    if os.getenv("USE_HTTPS", "false").lower() == "true":
+        import ssl
+
+        print("https://sulis50.zcu.cz/static/index.html")
+        ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_ctx.load_cert_chain(certfile="/etc/ssl/sulis50/fullchain.cer", keyfile="/etc/ssl/sulis50/sulis50.zcu.cz.key")
+        SpeechCloudWS.run(HDSDialog, address="0.0.0.0", port=443, static_path="./static", ssl_options=ssl_ctx)
+    else:
+        print("https://127.0.0.1:8888/static/index.html")
+
+        SpeechCloudWS.run(HDSDialog, address="0.0.0.0", port=8888, static_path="./static")

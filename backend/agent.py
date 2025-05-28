@@ -14,6 +14,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.prebuilt.tool_node import ToolNode, tools_condition
 
 from backend.graph import State
+from backend.messages import filter_messages
 from backend.utils import get_logger, get_datetime_formatted
 from backend.prompts import system_message
 from backend.tools import (
@@ -44,6 +45,7 @@ class Agent():
             set_light, get_light, set_temperature, get_temperature, activate_scene
         ]
 
+        self.use_n_messages: Optional[int] = 5
         self.system_message = system_message
 
         chat_prompt_template = ChatPromptTemplate([
@@ -74,7 +76,7 @@ class Agent():
     async def agenerate(self, state: State):
         logger.debug("---GENERATING---")
 
-        messages = state["messages"]
+        messages = filter_messages(state["messages"], n=self.use_n_messages)
         sys_msg = self.compose_system_message(state=state)
         agent_input = {
             "system_message": sys_msg,
@@ -89,7 +91,7 @@ class Agent():
     def generate(self, state: State):
         logger.debug("---GENERATING---")
 
-        messages = state["messages"]
+        messages = filter_messages(state["messages"], n=self.use_n_messages)
         sys_msg = self.compose_system_message(state=state)
         agent_input = {
             "system_message": sys_msg,
